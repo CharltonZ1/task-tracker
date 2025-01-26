@@ -1,7 +1,5 @@
 ﻿using TaskTracker.Classes;
 
-var tasks = ToDoTask.ReadAll();
-
 if (args.Length == 0)
 {
     Console.WriteLine("Please provide a command");
@@ -11,29 +9,33 @@ if (args.Length == 0)
 var command = args[0];
 var argCount = args.Length - 1;
 
-handleCommandValidation(command, argCount);
+handleCommandValidation(command, argCount, args);
 
 switch (command.ToLower())
 {
     case "add":
-        addTask(tasks, args[1]);
+        ToDoTask.AddTask(args[1]);
         break;
     case "update":
-        updateTask(tasks, int.Parse(args[1]), args[2]);
+        if (isNotNumber("update", args[1])) return;
+        ToDoTask.UpdateTask(int.Parse(args[1]), args[2]);
         break;
     case "delete":
-        deleteTask(tasks, int.Parse(args[1]));
+        if (isNotNumber("delete", args[1])) return;
+        ToDoTask.DeleteTask(int.Parse(args[1]));
         break;
     case "mark-in-progress":
-        markInProgress(tasks, int.Parse(args[1]));
+        if (isNotNumber("mark-in-progress", args[1])) return;
+        ToDoTask.MarkInProgress(int.Parse(args[1]));
         break;
     case "mark-done":
-        markDone(tasks, int.Parse(args[1]));
+        if (isNotNumber("mark-done", args[1])) return;
+        ToDoTask.MarkDone(int.Parse(args[1]));
         break;
     case "list":
         if (argCount == 0)
         {
-            listTasks(tasks);
+            ToDoTask.ListTasks();
         }
         else
         {
@@ -47,94 +49,14 @@ switch (command.ToLower())
                 return;
             }
 
-            listTasks(tasks, status);
+            ToDoTask.ListTasks(status);
         }
         break;
     default:
         Console.WriteLine("Unknown command");
         break;
 }
-
-static void addTask(List<ToDoTask> tasks, string desc)
-{
-    var newTask = new ToDoTask(desc);
-    tasks.Add(newTask);
-    ToDoTask.WriteAll(tasks);
-    Console.WriteLine("Task added successfully (ID: {0})", newTask.Id);
-}
-
-static void updateTask(List<ToDoTask> tasks, int id, string desc)
-{
-    var task = getIfExists(tasks, id);
-    if (task == null) return;
-    task.Description = desc;
-    ToDoTask.WriteAll(tasks);
-    Console.WriteLine("Task updated successfully");
-}
-
-static void deleteTask(List<ToDoTask> tasks, int id)
-{
-    var task = getIfExists(tasks, id);
-    if (task == null) return;
-    tasks.Remove(task);
-    ToDoTask.WriteAll(tasks);
-    Console.WriteLine("Task deleted successfully");
-}
-
-static void markInProgress(List<ToDoTask> tasks, int id)
-{
-    var task = getIfExists(tasks, id);
-    if (task == null) return;
-    task.Status = StatusEnum.InProgress;
-    ToDoTask.WriteAll(tasks);
-    Console.WriteLine("Task marked as in progress");
-}
-
-static void markDone(List<ToDoTask> tasks, int id)
-{
-    var task = getIfExists(tasks, id);
-    if (task == null) return;
-    task.Status = StatusEnum.Done;
-    ToDoTask.WriteAll(tasks);
-    Console.WriteLine("Task marked as done");
-}
-
-static void listTasks(List<ToDoTask> tasks, StatusEnum? status = null)
-{
-    if (tasks.Count == 0)
-    {
-        Console.WriteLine("No tasks to list");
-        return;
-    }
-    if (status == null)
-    {
-        foreach (var task in tasks)
-        {
-            Console.WriteLine(task);
-        }
-    }
-    else
-    {
-        foreach (var task in tasks.FindAll(t => t.Status == status))
-        {
-            Console.WriteLine(task);
-        }
-    }
-}
-
-static ToDoTask? getIfExists(List<ToDoTask> tasks, int id)
-{
-    var task = tasks.Find(t => t.Id == id);
-    if (task == null)
-    {
-        Console.WriteLine("Task not found");
-        return null;
-    }
-    return task;
-}
-
-
-static void handleCommandValidation(string command, int argCount)
+static void handleCommandValidation(string command, int argCount, string[] parameters)
 {
     switch (command)
     {
@@ -145,12 +67,25 @@ static void handleCommandValidation(string command, int argCount)
                 Console.WriteLine("add: {0}", msg);
                 return;
             }
+
+            // check if description is empty
+            if (string.IsNullOrWhiteSpace(parameters[1]))
+            {
+                Console.WriteLine("add: Description cannot be empty");
+                return;
+            }
             break;
         case "update":
             if (argCount < 2 || argCount > 2)
             {
                 var msg = argCount < 2 ? "Please provide an ID and a description" : "Too many arguments";
                 Console.WriteLine("update: {0}", msg);
+                return;
+            }
+            // check if description is empty
+            if (string.IsNullOrWhiteSpace(parameters[2]))
+            {
+                Console.WriteLine("update: Description cannot be empty");
                 return;
             }
             break;
@@ -177,6 +112,7 @@ static void handleCommandValidation(string command, int argCount)
                 Console.WriteLine("mark-done: {0}", msg);
                 return;
             }
+
             break;
         case "list":
             if (argCount > 1)
@@ -189,5 +125,15 @@ static void handleCommandValidation(string command, int argCount)
             Console.WriteLine("Unknown command");
             return;
     }
+}
+
+static bool isNotNumber(string command, string arg)
+{
+    if (!int.TryParse(arg, out _))
+    {
+        Console.WriteLine($"{command}: parameter must be a number");
+        return true;
+    }
+    return false;
 }
 

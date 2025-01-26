@@ -61,12 +61,103 @@ public class ToDoTask
         Status = status;
     }
 
-    public override string ToString()
+    private void UpdatedAtNow()
     {
-        return $"ID: {Id}\nDescription: {Description}\nStatus: {Status}\nCreated At: {CreatedAt}\nUpdated At: {UpdatedAt}";
+        _updatedAt = DateTime.Now;
     }
 
-    public static List<ToDoTask> ReadAll()
+    public override string ToString()
+    {
+        return $"\nID: {Id}\nDescription: {Description}\nStatus: {Status}\nCreated At: {CreatedAt}\nUpdated At: {UpdatedAt}";
+    }
+
+    public static void AddTask(string desc)
+    {
+        var tasks = ReadAll();
+        tasks.Add(new ToDoTask(desc));
+        WriteAll(tasks);
+        Console.WriteLine("Task added successfully");
+    }
+
+    public static void UpdateTask(int id, string desc)
+    {
+        var tasks = ReadAll();
+        var task = GetIfExists(tasks, id);
+        if (task == null) return;
+        task.Description = desc;
+        task.UpdatedAtNow();
+        WriteAll(tasks);
+        Console.WriteLine("Task updated successfully");
+    }
+
+    public static void DeleteTask(int id)
+    {
+        var tasks = ReadAll();
+        var task = GetIfExists(tasks, id);
+        if (task == null) return;
+        tasks.Remove(task);
+        WriteAll(tasks);
+        Console.WriteLine("Task deleted successfully");
+    }
+
+    public static void MarkInProgress(int id)
+    {
+        var tasks = ReadAll();
+        var task = GetIfExists(tasks, id);
+        if (task == null) return;
+        task.Status = StatusEnum.InProgress;
+        task.UpdatedAtNow();
+        WriteAll(tasks);
+        Console.WriteLine("Task marked as in progress");
+    }
+
+    public static void MarkDone(int id)
+    {
+        var tasks = ReadAll();
+        var task = GetIfExists(tasks, id);
+        if (task == null) return;
+        task.Status = StatusEnum.Done;
+        task.UpdatedAtNow();
+        WriteAll(tasks);
+        Console.WriteLine("Task marked as done");
+    }
+
+    public static void ListTasks(StatusEnum? status = null)
+    {
+        var tasks = ReadAll();
+        if (tasks.Count == 0)
+        {
+            Console.WriteLine("No tasks to list");
+            return;
+        }
+        if (status == null)
+        {
+            foreach (var task in tasks)
+            {
+                Console.WriteLine(task);
+            }
+        }
+        else
+        {
+            foreach (var task in tasks.FindAll(t => t.Status == status))
+            {
+                Console.WriteLine(task);
+            }
+        }
+    }
+
+    private static ToDoTask? GetIfExists(List<ToDoTask> tasks, int id)
+    {
+        var task = tasks.Find(t => t.Id == id);
+        if (task == null)
+        {
+            Console.WriteLine("Task not found");
+            return null;
+        }
+        return task;
+    }
+
+    private static List<ToDoTask> ReadAll()
     {
         if (!File.Exists("data.json"))
         {
@@ -79,16 +170,10 @@ public class ToDoTask
         return tasks;
     }
 
-    public static void WriteAll(List<ToDoTask> tasks)
+    private static void WriteAll(List<ToDoTask> tasks)
     {
         var json = JsonSerializer.Serialize(tasks);
         File.WriteAllText("data.json", json);
-    }
-
-
-    private void UpdatedAtNow()
-    {
-        _updatedAt = DateTime.Now;
     }
 }
 
