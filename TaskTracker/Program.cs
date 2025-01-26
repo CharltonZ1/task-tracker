@@ -1,39 +1,5 @@
 ﻿using TaskTracker.Classes;
 
-
-//var temp1 = new ToDoTask("Task 1");
-//var temp2 = new ToDoTask("Task 2");
-//var temp3 = new ToDoTask("Task 3");
-
-
-//tasks.Add(temp1);
-//tasks.Add(temp2);
-//tasks.Add(temp3);
-
-//ToDoTask.WriteAll(tasks);
-
-//var readTasks = ToDoTask.ReadAll();
-
-//foreach (var task in readTasks)
-//{
-//    Console.WriteLine(task.Description);
-//}
-
-//// Prevent console from closing immediately
-//Console.ReadLine();
-
-// Commands for CLI
-
-// add
-// update
-// delete
-// mark-in-progress
-// mark-done
-// list by status
-
-// first read our list of tasks to get the current state
-// then we can add, update, delete, mark-in-progress, mark-done, list by status
-
 var tasks = ToDoTask.ReadAll();
 
 if (args.Length == 0)
@@ -45,132 +11,183 @@ if (args.Length == 0)
 var command = args[0];
 var argCount = args.Length - 1;
 
-Console.WriteLine($"Command: {command}");
-Console.WriteLine($"Arguments: {argCount}");
-Console.WriteLine($"Args: {string.Join(", ", args)}");
+handleCommandValidation(command, argCount);
 
-switch (command)
+switch (command.ToLower())
 {
     case "add":
-        if (argCount < 1 || argCount > 1)
-        {
-            Console.WriteLine(argCount < 2 ? "Please provide a description" : "Too many arguments");
-            return;
-        }
-        var newTask = new ToDoTask(args[1]);
-        tasks.Add(newTask);
-        ToDoTask.WriteAll(tasks);
-        Console.WriteLine($"Task successfully added (ID: {newTask.Id})");
+        addTask(tasks, args[1]);
         break;
     case "update":
-        if (argCount < 2 || argCount > 2)
-        {
-            Console.WriteLine(argCount < 2 ? "Please provide an ID and a description" : "Too many arguments");
-            return;
-        }
-        var updateId = int.Parse(args[1]);
-        var updateTask = tasks.Find(t => t.Id == updateId);
-        if (updateTask == null)
-        {
-            Console.WriteLine("Task not found");
-            return;
-        }
-        updateTask.Description = args[2];
-        ToDoTask.WriteAll(tasks);
-        Console.WriteLine($"Task successfully updated (ID: {updateTask.Id})");
+        updateTask(tasks, int.Parse(args[1]), args[2]);
         break;
     case "delete":
-        if (argCount < 1 || argCount > 1)
-        {
-            Console.WriteLine(argCount < 2 ? "Please provide an ID" : "Too many arguments");
-            return;
-        }
-        var deleteId = int.Parse(args[1]);
-        var deleteTask = tasks.Find(t => t.Id == deleteId);
-        if (deleteTask == null)
-        {
-            Console.WriteLine("Task not found");
-            return;
-        }
-        tasks.Remove(deleteTask);
-        ToDoTask.WriteAll(tasks);
-        Console.WriteLine($"Task successfully deleted (ID: {deleteTask.Id})");
+        deleteTask(tasks, int.Parse(args[1]));
         break;
     case "mark-in-progress":
-        if (argCount < 1 || argCount > 1)
-        {
-            Console.WriteLine(argCount < 2 ? "Please provide an ID" : "Too many arguments");
-            return;
-        }
-        var markInProgressId = int.Parse(args[1]);
-        var markInProgressTask = tasks.Find(t => t.Id == markInProgressId);
-        if (markInProgressTask == null)
-        {
-            Console.WriteLine("Task not found");
-            return;
-        }
-        markInProgressTask.Status = StatusEnum.InProgress;
-        ToDoTask.WriteAll(tasks);
-        Console.WriteLine($"Task successfully marked in progress (ID: {markInProgressTask.Id})");
+        markInProgress(tasks, int.Parse(args[1]));
         break;
-
     case "mark-done":
-        if (argCount < 1 || argCount > 1)
-        {
-            Console.WriteLine(argCount < 2 ? "Please provide an ID" : "Too many arguments");
-            return;
-        }
-        var markDoneId = int.Parse(args[1]);
-        var markDoneTask = tasks.Find(t => t.Id == markDoneId);
-        if (markDoneTask == null)
-        {
-            Console.WriteLine("Task not found");
-            return;
-        }
-        markDoneTask.Status = StatusEnum.Done;
-        ToDoTask.WriteAll(tasks);
-        Console.WriteLine($"Task successfully marked done (ID: {markDoneTask.Id})");
+        markDone(tasks, int.Parse(args[1]));
         break;
-
     case "list":
-        if (argCount > 1)
+        if (argCount == 0)
         {
-            Console.WriteLine("Too many arguments");
-            return;
-        } else if (argCount < 1)
+            listTasks(tasks);
+        }
+        else
         {
-            // List all tasks
-            if (tasks.Count == 0)
+            // first strip dash from status (in-progress -> InProgress)
+            var cleanedStatus = args[1].Replace("-", "");
+
+            // try to parse status
+            if (!Enum.TryParse<StatusEnum>(cleanedStatus, true, out var status))
             {
-                Console.WriteLine("No tasks found");
+                Console.WriteLine("Invalid status");
                 return;
             }
-            foreach (var task in tasks)
-            {
-                Console.WriteLine(task);
-            }
-            return;
-        }
-        var listStatus = args[1];
-        // strip - from status
-        if (listStatus.Contains('-'))
-        {
-            listStatus = listStatus.Replace("-", "");
-        }
-        var listTasks = tasks.FindAll(t => t.Status.ToString().ToLower() == listStatus.ToLower());
-        if (listTasks.Count == 0)
-        {
-            Console.WriteLine("No tasks found");
-            return;
-        }
-        foreach (var task in listTasks)
-        {
-            Console.WriteLine(task);
+
+            listTasks(tasks, status);
         }
         break;
-
     default:
         Console.WriteLine("Unknown command");
         break;
+}
+
+static void addTask(List<ToDoTask> tasks, string desc)
+{
+    var newTask = new ToDoTask(desc);
+    tasks.Add(newTask);
+    ToDoTask.WriteAll(tasks);
+    Console.WriteLine("Task added successfully (ID: {0})", newTask.Id);
+}
+
+static void updateTask(List<ToDoTask> tasks, int id, string desc)
+{
+    var task = getIfExists(tasks, id);
+    if (task == null) return;
+    task.Description = desc;
+    ToDoTask.WriteAll(tasks);
+    Console.WriteLine("Task updated successfully");
+}
+
+static void deleteTask(List<ToDoTask> tasks, int id)
+{
+    var task = getIfExists(tasks, id);
+    if (task == null) return;
+    tasks.Remove(task);
+    ToDoTask.WriteAll(tasks);
+    Console.WriteLine("Task deleted successfully");
+}
+
+static void markInProgress(List<ToDoTask> tasks, int id)
+{
+    var task = getIfExists(tasks, id);
+    if (task == null) return;
+    task.Status = StatusEnum.InProgress;
+    ToDoTask.WriteAll(tasks);
+    Console.WriteLine("Task marked as in progress");
+}
+
+static void markDone(List<ToDoTask> tasks, int id)
+{
+    var task = getIfExists(tasks, id);
+    if (task == null) return;
+    task.Status = StatusEnum.Done;
+    ToDoTask.WriteAll(tasks);
+    Console.WriteLine("Task marked as done");
+}
+
+static void listTasks(List<ToDoTask> tasks, StatusEnum? status = null)
+{
+    if (tasks.Count == 0)
+    {
+        Console.WriteLine("No tasks to list");
+        return;
+    }
+    if (status == null)
+    {
+        foreach (var task in tasks)
+        {
+            Console.WriteLine(task);
+        }
+    }
+    else
+    {
+        foreach (var task in tasks.FindAll(t => t.Status == status))
+        {
+            Console.WriteLine(task);
+        }
+    }
+}
+
+static ToDoTask? getIfExists(List<ToDoTask> tasks, int id)
+{
+    var task = tasks.Find(t => t.Id == id);
+    if (task == null)
+    {
+        Console.WriteLine("Task not found");
+        return null;
+    }
+    return task;
+}
+
+
+static void handleCommandValidation(string command, int argCount)
+{
+    switch (command)
+    {
+        case "add":
+            if (argCount < 1 || argCount > 1)
+            {
+                var msg = argCount < 2 ? "Please provide a description" : "Too many arguments";
+                Console.WriteLine("add: {0}", msg);
+                return;
+            }
+            break;
+        case "update":
+            if (argCount < 2 || argCount > 2)
+            {
+                var msg = argCount < 2 ? "Please provide an ID and a description" : "Too many arguments";
+                Console.WriteLine("update: {0}", msg);
+                return;
+            }
+            break;
+        case "delete":
+            if (argCount < 1 || argCount > 1)
+            {
+                var msg = argCount < 2 ? "Please provide an ID" : "Too many arguments";
+                Console.WriteLine("delete: {0}", msg);
+                return;
+            }
+            break;
+        case "mark-in-progress":
+            if (argCount < 1 || argCount > 1)
+            {
+                var msg = argCount < 2 ? "Please provide an ID" : "Too many arguments";
+                Console.WriteLine("mark-in-progress: {0}", msg);
+                return;
+            }
+            break;
+        case "mark-done":
+            if (argCount < 1 || argCount > 1)
+            {
+                var msg = argCount < 2 ? "Please provide an ID" : "Too many arguments";
+                Console.WriteLine("mark-done: {0}", msg);
+                return;
+            }
+            break;
+        case "list":
+            if (argCount > 1)
+            {
+                Console.WriteLine("list: Too many arguments");
+                return;
+            }
+            break;
+        default:
+            Console.WriteLine("Unknown command");
+            return;
+    }
 }
 
